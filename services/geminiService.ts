@@ -1,6 +1,19 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { UserProfile, NutritionalInfo, AnalysisResult, HealthCondition } from "../types";
 
+/**
+ * Creates and returns a GoogleGenAI client instance.
+ * Throws a clear error if the API key is not configured in the environment.
+ */
+const getGenAIClient = () => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey || apiKey.trim() === "") {
+    throw new Error("A Google AI API key has not been configured. Please ensure the API_KEY is set in your environment.");
+  }
+  return new GoogleGenAI({ apiKey });
+};
+
+
 const nutritionalInfoSchema = {
   type: Type.OBJECT,
   properties: {
@@ -20,7 +33,7 @@ const nutritionalInfoSchema = {
 };
 
 export const analyzeFoodFromImage = async (base64Image: string, mimeType: string): Promise<NutritionalInfo> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getGenAIClient();
   const imagePart = {
     inlineData: {
       data: base64Image,
@@ -47,12 +60,15 @@ export const analyzeFoodFromImage = async (base64Image: string, mimeType: string
     return nutritionalInfo;
   } catch (error) {
     console.error("Error analyzing food image with Gemini:", error);
+    if (error instanceof Error && (error.message.includes('400') || error.message.includes('invalid'))) {
+        throw new Error("The provided API key is invalid. Please check your environment configuration.");
+    }
     throw new Error("Failed to analyze food image. The AI model could not process the request.");
   }
 };
 
 export const analyzeFoodFromQR = async (qrData: string): Promise<NutritionalInfo> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getGenAIClient();
   const prompt = `A QR code was scanned for a food product, and it contained this data: "${qrData}". Assume this corresponds to a popular packaged food item. Generate a plausible nutritional label for it. If the data looks like a URL, interpret what kind of product it might be. If it's just an ID, invent a common product (e.g., a granola bar, a soda, or a bag of chips).`;
 
   try {
@@ -69,12 +85,15 @@ export const analyzeFoodFromQR = async (qrData: string): Promise<NutritionalInfo
     return nutritionalInfo;
   } catch (error) {
     console.error("Error analyzing QR data with Gemini:", error);
+    if (error instanceof Error && (error.message.includes('400') || error.message.includes('invalid'))) {
+        throw new Error("The provided API key is invalid. Please check your environment configuration.");
+    }
     throw new Error("Failed to analyze QR data. The AI model could not process the request.");
   }
 };
 
 export const getHealthRecommendation = async (nutritionalInfo: NutritionalInfo, userProfile: UserProfile): Promise<Omit<AnalysisResult, 'nutritionalInfo'>> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getGenAIClient();
   let profileDescription = "a generic user";
   if (userProfile.healthCondition !== HealthCondition.NONE) {
     profileDescription = `a user who is a ${userProfile.healthCondition}`;
@@ -126,6 +145,9 @@ export const getHealthRecommendation = async (nutritionalInfo: NutritionalInfo, 
     return JSON.parse(jsonText);
   } catch (error) {
     console.error("Error getting health recommendation with Gemini:", error);
+    if (error instanceof Error && (error.message.includes('400') || error.message.includes('invalid'))) {
+        throw new Error("The provided API key is invalid. Please check your environment configuration.");
+    }
     throw new Error("Failed to get health recommendation. The AI model could not process the request.");
   }
 };

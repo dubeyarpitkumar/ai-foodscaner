@@ -33,24 +33,13 @@ export default function App() {
     setIsLoading(true);
     setError(null);
     try {
-      // A valid API key is required to proceed.
-      if (!process.env.API_KEY) {
-        throw new Error("API Key is not configured. Please set it up in the environment.");
-      }
       const nutritionalInfo = await getNutritionalInfo();
       const recommendation = await getHealthRecommendation(nutritionalInfo, userProfile);
       setAnalysisResult({ ...recommendation, nutritionalInfo });
       setView(View.RESULTS);
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred.';
-       if (errorMessage.includes("API Key is not configured")) {
-         setError(errorMessage);
-       } else if (errorMessage.includes("400") || errorMessage.includes("invalid")) {
-        // Catches errors related to bad API keys from Gemini
-        setError("The configured API Key is invalid or missing. Please check the application's environment configuration.");
-      } else {
-        setError(errorMessage);
-      }
+      setError(errorMessage);
       setView(View.HOME); // Go back home on errors
     } finally {
       setIsLoading(false);
