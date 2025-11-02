@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { AnalysisResult } from '../types';
+import { useTranslations } from '../contexts/LanguageContext';
 
 interface ResultsDisplayProps {
   result: AnalysisResult | null;
@@ -17,10 +18,11 @@ const NutritionItem: React.FC<{ label: string; value: string | number; unit: str
 );
 
 export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result, scannedImage, onReset }) => {
+  const { t } = useTranslations();
   if (!result) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-lg text-gray-500 dark:text-gray-400">No results to display.</p>
+        <p className="text-lg text-gray-500 dark:text-gray-400">{t.noResults}</p>
       </div>
     );
   }
@@ -48,18 +50,18 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result, scannedI
           </div>
 
           <div className="mt-6">
-            <h3 className="text-xl font-semibold mb-4 text-center">Nutritional Information</h3>
+            <h3 className="text-xl font-semibold mb-4 text-center">{t.nutritionalInformation}</h3>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <NutritionItem label="Calories" value={nutritionalInfo.calories} unit="kcal" />
-              <NutritionItem label="Protein" value={nutritionalInfo.protein} unit="grams" />
-              <NutritionItem label="Fat" value={nutritionalInfo.fat} unit="grams" />
-              <NutritionItem label="Sugar" value={nutritionalInfo.sugar} unit="grams" />
-              <NutritionItem label="Fiber" value={nutritionalInfo.fiber} unit="grams" />
+              <NutritionItem label={t.calories} value={nutritionalInfo.calories} unit={t.kcal} />
+              <NutritionItem label={t.protein} value={nutritionalInfo.protein} unit={t.grams} />
+              <NutritionItem label={t.fat} value={nutritionalInfo.fat} unit={t.grams} />
+              <NutritionItem label={t.sugar} value={nutritionalInfo.sugar} unit={t.grams} />
+              <NutritionItem label={t.fiber} value={nutritionalInfo.fiber} unit={t.grams} />
             </div>
           </div>
 
           <div className="mt-6">
-            <h3 className="text-xl font-semibold mb-2 text-center">Ingredients</h3>
+            <h3 className="text-xl font-semibold mb-2 text-center">{t.ingredients}</h3>
             <div className="flex flex-wrap justify-center gap-2">
               {nutritionalInfo.ingredients.map((item, index) => (
                 <span key={index} className="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full text-sm">
@@ -76,7 +78,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result, scannedI
           onClick={onReset}
           className="px-8 py-3 bg-green-600 text-white font-bold rounded-full hover:bg-green-700 transition-colors shadow-lg"
         >
-          Scan Another Item
+          {t.scanAnotherItem}
         </button>
       </div>
     </div>

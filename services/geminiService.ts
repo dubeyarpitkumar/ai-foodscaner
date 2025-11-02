@@ -1,6 +1,10 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { UserProfile, NutritionalInfo, AnalysisResult, HealthCondition } from "../types";
 
+// NOTE: Hardcoded API key as per user request to make it "inbuilt"
+// and to resolve environment issues where process.env.API_KEY was not available.
+const API_KEY = "AIzaSyBs37d1YHkEQHJQljFgp1-2U5reNHsgnnk";
+
 const nutritionalInfoSchema = {
   type: Type.OBJECT,
   properties: {
@@ -20,7 +24,7 @@ const nutritionalInfoSchema = {
 };
 
 export const analyzeFoodFromImage = async (base64Image: string, mimeType: string): Promise<NutritionalInfo> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey: API_KEY });
   const imagePart = {
     inlineData: {
       data: base64Image,
@@ -52,7 +56,7 @@ export const analyzeFoodFromImage = async (base64Image: string, mimeType: string
 };
 
 export const analyzeFoodFromQR = async (qrData: string): Promise<NutritionalInfo> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey: API_KEY });
   const prompt = `A QR code was scanned for a food product, and it contained this data: "${qrData}". Assume this corresponds to a popular packaged food item. Generate a plausible nutritional label for it. If the data looks like a URL, interpret what kind of product it might be. If it's just an ID, invent a common product (e.g., a granola bar, a soda, or a bag of chips).`;
 
   try {
@@ -74,7 +78,7 @@ export const analyzeFoodFromQR = async (qrData: string): Promise<NutritionalInfo
 };
 
 export const getHealthRecommendation = async (nutritionalInfo: NutritionalInfo, userProfile: UserProfile): Promise<Omit<AnalysisResult, 'nutritionalInfo'>> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey: API_KEY });
   let profileDescription = "a generic user";
   if (userProfile.healthCondition !== HealthCondition.NONE) {
     profileDescription = `a user who is a ${userProfile.healthCondition}`;
