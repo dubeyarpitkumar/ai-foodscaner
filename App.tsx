@@ -30,29 +30,38 @@ export default function App() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [hasApiKey, setHasApiKey] = useState(false);
 
+  // More robust check for AI Studio environment
   useEffect(() => {
     const checkApiKey = async () => {
+      let keyAvailable = false;
       try {
-        // Fix: Use type assertion to 'any' to avoid global type conflicts for window.aistudio.
-        const keyStatus = await (window as any).aistudio.hasSelectedApiKey();
-        setHasApiKey(keyStatus);
+        if (typeof (window as any)?.aistudio?.hasSelectedApiKey === 'function') {
+          keyAvailable = await (window as any).aistudio.hasSelectedApiKey();
+        } else {
+          console.warn("AI Studio SDK not found or hasSelectedApiKey method is missing.");
+        }
       } catch (e) {
-        console.error("aistudio tools not available.", e);
-        setHasApiKey(false);
+        console.error("Error checking for AI Studio API key:", e);
+      } finally {
+        setHasApiKey(keyAvailable);
       }
     };
     checkApiKey();
   }, []);
 
   const handleSelectKey = async () => {
+    setError(null); // Clear previous errors before attempting
     try {
-      // Fix: Use type assertion to 'any' to avoid global type conflicts for window.aistudio.
+      if (typeof (window as any)?.aistudio?.openSelectKey !== 'function') {
+        throw new Error("AI Studio SDK not found or openSelectKey method is missing.");
+      }
       await (window as any).aistudio.openSelectKey();
-      // Assume success after dialog opens to avoid race conditions.
+      // After opening, we assume a key is selected to proceed.
+      // The app will re-verify on the next API call if the key is invalid.
       setHasApiKey(true);
     } catch (e) {
        console.error("Could not open API key selection dialog.", e);
-       setError("Could not open the API key selection dialog. Please refresh the page and try again.");
+       setError("Could not open the API key selection dialog. Please ensure you're in a supported environment and refresh the page.");
     }
   };
   
@@ -85,10 +94,20 @@ export default function App() {
   }, [handleAnalysis]);
   
   const handleImageUpload = useCallback(async (file: File) => {
-    const base64Image = await fileToBase64(file);
-    const imageSrc = URL.createObjectURL(file);
-    setScannedImage(imageSrc);
-    handleAnalysis(() => analyzeFoodFromImage(base64Image, file.type));
+    setIsLoading(true);
+    setError(null);
+    try {
+        const base64Image = await fileToBase64(file);
+        const imageSrc = URL.createObjectURL(file);
+        setScannedImage(imageSrc);
+        // Pass the analysis function to the central handler which manages loading state and API errors
+        await handleAnalysis(() => analyzeFoodFromImage(base64Image, file.type));
+    } catch (e) {
+        console.error("Error processing file upload:", e);
+        setError("There was an error reading the file. Please try a different image.");
+        setIsLoading(false); // Ensure loading is stopped on file error
+        setView(View.HOME);   // Return to home screen
+    }
   }, [handleAnalysis]);
 
   const handleQrCodeScan = useCallback((data: string) => {
