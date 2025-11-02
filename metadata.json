@@ -1,0 +1,7 @@
+{
+  "name": "NutriScan AI – Smart Food Analyzer",
+  "description": "An AI-powered web application that allows users to instantly view the nutritional information of any food item by scanning its QR code or taking a live picture of it, and provides health recommendations based on a user's profile.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
