@@ -1,9 +1,9 @@
-
 import React, { useRef, useCallback, useEffect, useState } from 'react';
 import Webcam from 'react-webcam';
 import jsQR from 'jsqr';
 import { ScanMode } from '../types';
 import { CameraIcon } from './icons/CameraIcon';
+import { useI18n } from '../hooks/useI18n';
 
 interface ScannerProps {
   mode: ScanMode;
@@ -16,6 +16,7 @@ export const Scanner: React.FC<ScannerProps> = ({ mode, onImageCapture, onQrCode
   const webcamRef = useRef<Webcam>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useI18n();
 
   const capture = useCallback(() => {
     const imageSrc = webcamRef.current?.getScreenshot();
@@ -76,7 +77,7 @@ export const Scanner: React.FC<ScannerProps> = ({ mode, onImageCapture, onQrCode
       {mode === ScanMode.QR && (
         <div className="absolute inset-0 flex items-center justify-center p-8">
             <div className="w-full max-w-sm aspect-square border-4 border-dashed border-green-400 rounded-2xl bg-black bg-opacity-20 animate-pulse"></div>
-            <p className="absolute bottom-24 text-white text-lg font-semibold bg-black bg-opacity-50 px-4 py-2 rounded-lg">Point at a QR Code</p>
+            <p className="absolute bottom-24 text-white text-lg font-semibold bg-black bg-opacity-50 px-4 py-2 rounded-lg">{t('pointAtQRCode')}</p>
         </div>
       )}
       
@@ -86,7 +87,8 @@ export const Scanner: React.FC<ScannerProps> = ({ mode, onImageCapture, onQrCode
         <button
           onClick={onBack}
           className="absolute left-4 bottom-4 bg-gray-700 text-white p-3 rounded-full hover:bg-gray-600 transition-colors"
-          aria-label="Back"
+          // FIX: The `aria-label` attribute must be a string. Cast the result of `t` to a string.
+          aria-label={t('back') as string}
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
         </button>
@@ -95,7 +97,8 @@ export const Scanner: React.FC<ScannerProps> = ({ mode, onImageCapture, onQrCode
           <button
             onClick={capture}
             className="w-20 h-20 bg-white rounded-full border-4 border-green-500 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-black focus:ring-green-400"
-            aria-label="Capture Food Image"
+            // FIX: The `aria-label` attribute must be a string. Cast the result of `t` to a string.
+            aria-label={t('captureFoodImage') as string}
           >
             <CameraIcon className="w-10 h-10 text-green-600" />
           </button>

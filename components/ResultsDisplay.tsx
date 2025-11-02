@@ -1,6 +1,6 @@
-
 import React from 'react';
 import { AnalysisResult } from '../types';
+import { useI18n } from '../hooks/useI18n';
 
 interface ResultsDisplayProps {
   result: AnalysisResult | null;
@@ -17,6 +17,8 @@ const NutritionItem: React.FC<{ label: string; value: string | number; unit: str
 );
 
 export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result, scannedImage, onReset }) => {
+  const { t } = useI18n();
+
   if (!result) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -48,18 +50,23 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result, scannedI
           </div>
 
           <div className="mt-6">
-            <h3 className="text-xl font-semibold mb-4 text-center">Nutritional Information</h3>
+            <h3 className="text-xl font-semibold mb-4 text-center">{t('nutritionalInfo')}</h3>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <NutritionItem label="Calories" value={nutritionalInfo.calories} unit="kcal" />
-              <NutritionItem label="Protein" value={nutritionalInfo.protein} unit="grams" />
-              <NutritionItem label="Fat" value={nutritionalInfo.fat} unit="grams" />
-              <NutritionItem label="Sugar" value={nutritionalInfo.sugar} unit="grams" />
-              <NutritionItem label="Fiber" value={nutritionalInfo.fiber} unit="grams" />
+              {/* FIX: The `label` prop expects a string. Cast the result of `t` to a string. */}
+              <NutritionItem label={t('calories') as string} value={nutritionalInfo.calories} unit="kcal" />
+              {/* FIX: The `label` prop expects a string. Cast the result of `t` to a string. */}
+              <NutritionItem label={t('protein') as string} value={nutritionalInfo.protein} unit="grams" />
+              {/* FIX: The `label` prop expects a string. Cast the result of `t` to a string. */}
+              <NutritionItem label={t('fat') as string} value={nutritionalInfo.fat} unit="grams" />
+              {/* FIX: The `label` prop expects a string. Cast the result of `t` to a string. */}
+              <NutritionItem label={t('sugar') as string} value={nutritionalInfo.sugar} unit="grams" />
+              {/* FIX: The `label` prop expects a string. Cast the result of `t` to a string. */}
+              <NutritionItem label={t('fiber') as string} value={nutritionalInfo.fiber} unit="grams" />
             </div>
           </div>
 
           <div className="mt-6">
-            <h3 className="text-xl font-semibold mb-2 text-center">Ingredients</h3>
+            <h3 className="text-xl font-semibold mb-2 text-center">{t('ingredients')}</h3>
             <div className="flex flex-wrap justify-center gap-2">
               {nutritionalInfo.ingredients.map((item, index) => (
                 <span key={index} className="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full text-sm">
@@ -76,7 +83,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result, scannedI
           onClick={onReset}
           className="px-8 py-3 bg-green-600 text-white font-bold rounded-full hover:bg-green-700 transition-colors shadow-lg"
         >
-          Scan Another Item
+          {t('scanAnotherItem')}
         </button>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useI18n } from '../hooks/useI18n';
 
 interface ApiKeyScreenProps {
   onSave: (apiKey: string) => void;
@@ -8,6 +9,7 @@ interface ApiKeyScreenProps {
 
 export const ApiKeyScreen: React.FC<ApiKeyScreenProps> = ({ onSave, error, clearError }) => {
   const [apiKey, setApiKey] = useState('');
+  const { t } = useI18n();
 
   const handleSaveClick = () => {
     if (apiKey.trim()) {
@@ -19,25 +21,27 @@ export const ApiKeyScreen: React.FC<ApiKeyScreenProps> = ({ onSave, error, clear
     // Clear any previous API key errors when the component mounts
     clearError();
   }, [clearError]);
+  
+  const docLink = (
+    <a 
+      href="https://ai.google.dev/gemini-api/docs/api-key" 
+      target="_blank" 
+      rel="noopener noreferrer" 
+      className="text-green-400 underline hover:text-green-300"
+    >
+      {t('officialDocumentation')}
+    </a>
+  );
 
   return (
     <div className="flex flex-col items-center justify-center h-screen p-4 text-center bg-gray-900 text-gray-200">
       <div className="max-w-md w-full">
-        <h1 className="text-4xl font-bold text-green-400">Welcome to NutriScan AI</h1>
+        <h1 className="text-4xl font-bold text-green-400">{t('welcomeTitle')}</h1>
         <p className="mt-4 text-lg text-gray-300">
-          To power the AI food analysis, this app requires a Google AI Studio API key.
+          {t('apiKeyPrompt')}
         </p>
         <p className="mt-2 text-sm text-gray-400">
-          Your key is used directly in your browser and is never sent to our servers.
-          For information on getting a key, please see the{' '}
-          <a 
-            href="https://ai.google.dev/gemini-api/docs/api-key" 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="text-green-400 underline hover:text-green-300"
-          >
-            official documentation
-          </a>.
+          {t('apiKeyInfo', { link: docLink })}
         </p>
 
         <div className="mt-8">
@@ -46,7 +50,8 @@ export const ApiKeyScreen: React.FC<ApiKeyScreenProps> = ({ onSave, error, clear
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             className="w-full px-4 py-3 bg-gray-800 border-2 border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-lg text-center"
-            placeholder="Enter your API Key here"
+            // FIX: The `placeholder` attribute must be a string. Cast the result of `t` to a string.
+            placeholder={t('apiKeyPlaceholder') as string}
             aria-label="Google AI API Key"
           />
         </div>
@@ -63,7 +68,7 @@ export const ApiKeyScreen: React.FC<ApiKeyScreenProps> = ({ onSave, error, clear
             disabled={!apiKey.trim()}
             className="w-full px-8 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-colors shadow-lg disabled:bg-gray-500 disabled:cursor-not-allowed"
           >
-            Continue
+            {t('continue')}
           </button>
         </div>
       </div>
