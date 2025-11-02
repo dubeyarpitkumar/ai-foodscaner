@@ -8,9 +8,8 @@ export const QrCodeIcon = ({ className }: { className?: string }) => (
     fill="none"
     viewBox="0 0 24 24"
     stroke="currentColor"
-    strokeWidth={1.5}
+    strokeWidth={2}
   >
-    <path strokeLinecap="round" strokeLinejoin="round" d="M4 4h4v4H4V4zm6 0h4v4h-4V4zM4 10h4v4H4v-4zm6 0h4v4h-4v-4zm6-6h4v4h-4V4zM10 4h4v4h-4V4zm6 6h4v4h-4v-4zm-6 6h4v4h-4v-4zm6 0h4v4h-4v-4zM4 16h4v4H4v-4z" />
-    <path d="M14.5 14.5h1v1h-1z m2 0h1v1h-1z m-2 2h1v1h-1z m2 0h1v1h-1z m-2 2h1v1h-1z m2 0h1v1h-1z" />
+     <path strokeLinecap="round" strokeLinejoin="round" d="M4 4h1v1H4V4zm2 0h1v1H6V4zm2 0h1v1H8V4zm4 0h1v1h-1V4zm2 0h1v1h-1V4zm2 0h1v1h-1V4zM4 6h1v1H4V6zm14 0h1v1h-1V6zM4 8h1v1H4V8zm14 0h1v1h-1V8zM4 12h1v1H4v-1zm2 0h1v1H6v-1zm2 0h1v1H8v-1zm6 0h1v1h-1v-1zm2 0h1v1h-1v-1zm2 0h1v1h-1v-1zM4 14h1v1H4v-1zm14 0h1v1h-1v-1zM4 16h1v1H4v-1zm2 0h1v1H6v-1zm2 0h1v1H8v-1zm10 0h1v1h-1v-1zM4 18h1v1H4v-1zm2 0h1v1H6v-1zm2 0h1v1H8v-1zm10 0h1v1h-1v-1zM6 6h3v3H6V6zm8 0h3v3h-3V6zM6 14h3v3H6v-3zm8 0h3v3h-3v-3z" />
   </svg>
 );

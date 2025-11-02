@@ -1,9 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { UserProfile, NutritionalInfo, AnalysisResult, HealthCondition } from "../types";
 
-// FIX: Initialize GoogleGenAI with API key from environment variables and reuse the instance.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 const nutritionalInfoSchema = {
   type: Type.OBJECT,
   properties: {
@@ -22,29 +19,20 @@ const nutritionalInfoSchema = {
   required: ["foodName", "calories", "protein", "sugar", "fat", "fiber", "ingredients"]
 };
 
-const handleApiError = (error: unknown): never => {
-  console.error("Error communicating with Gemini API:", error);
-  // FIX: Updated error message to reflect API key is from environment.
-  if (error instanceof Error && (error.message.includes('400') || error.message.includes('invalid') || error.message.toLowerCase().includes('api key'))) {
-      throw new Error("The API key is invalid or expired. Please check your environment configuration.");
-  }
-  throw new Error("Failed to get a response from the AI model. The service may be temporarily unavailable.");
-};
-
-// FIX: Removed apiKey parameter.
 export const analyzeFoodFromImage = async (base64Image: string, mimeType: string): Promise<NutritionalInfo> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const imagePart = {
+    inlineData: {
+      data: base64Image,
+      mimeType,
+    },
+  };
+
+  const textPart = {
+    text: "Identify the food in this image. Provide its estimated nutritional information (calories, protein, sugar, fat, fiber) and list the main ingredients. If you cannot identify a food, provide a best guess but indicate uncertainty in the foodName, like 'Possibly a vegetable stir-fry'."
+  };
+
   try {
-    const imagePart = {
-      inlineData: {
-        data: base64Image,
-        mimeType,
-      },
-    };
-
-    const textPart = {
-      text: "Identify the food in this image. Provide its estimated nutritional information (calories, protein, sugar, fat, fiber) and list the main ingredients. If you cannot identify a food, provide a best guess but indicate uncertainty in the foodName, like 'Possibly a vegetable stir-fry'."
-    };
-
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: { parts: [imagePart, textPart] },
@@ -58,15 +46,16 @@ export const analyzeFoodFromImage = async (base64Image: string, mimeType: string
     const nutritionalInfo: NutritionalInfo = JSON.parse(jsonText);
     return nutritionalInfo;
   } catch (error) {
-    handleApiError(error);
+    console.error("Gemini API call failed in analyzeFoodFromImage:", error);
+    throw error;
   }
 };
 
-// FIX: Removed apiKey parameter.
 export const analyzeFoodFromQR = async (qrData: string): Promise<NutritionalInfo> => {
-  try {
-    const prompt = `A QR code was scanned for a food product, and it contained this data: "${qrData}". Assume this corresponds to a popular packaged food item. Generate a plausible nutritional label for it. If the data looks like a URL, interpret what kind of product it might be. If it's just an ID, invent a common product (e.g., a granola bar, a soda, or a bag of chips).`;
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const prompt = `A QR code was scanned for a food product, and it contained this data: "${qrData}". Assume this corresponds to a popular packaged food item. Generate a plausible nutritional label for it. If the data looks like a URL, interpret what kind of product it might be. If it's just an ID, invent a common product (e.g., a granola bar, a soda, or a bag of chips).`;
 
+  try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,
@@ -79,50 +68,51 @@ export const analyzeFoodFromQR = async (qrData: string): Promise<NutritionalInfo
     const nutritionalInfo: NutritionalInfo = JSON.parse(jsonText);
     return nutritionalInfo;
   } catch (error) {
-    handleApiError(error);
+    console.error("Gemini API call failed in analyzeFoodFromQR:", error);
+    throw error;
   }
 };
 
-// FIX: Removed apiKey parameter.
 export const getHealthRecommendation = async (nutritionalInfo: NutritionalInfo, userProfile: UserProfile): Promise<Omit<AnalysisResult, 'nutritionalInfo'>> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  let profileDescription = "a generic user";
+  if (userProfile.healthCondition !== HealthCondition.NONE) {
+    profileDescription = `a user who is a ${userProfile.healthCondition}`;
+  }
+  if (userProfile.age) {
+    profileDescription += ` and is ${userProfile.age} years old`;
+  }
+  if (userProfile.allergies.length > 0) {
+    profileDescription += ` with allergies to ${userProfile.allergies.join(", ")}.`;
+  }
+
+  const prompt = `
+    Analyze the following nutritional information for ${profileDescription}:
+    - Food: ${nutritionalInfo.foodName}
+    - Calories: ${nutritionalInfo.calories} kcal
+    - Protein: ${nutritionalInfo.protein}g
+    - Sugar: ${nutritionalInfo.sugar}g
+    - Fat: ${nutritionalInfo.fat}g
+    - Fiber: ${nutritionalInfo.fiber}g
+    - Ingredients: ${nutritionalInfo.ingredients.join(", ")}
+
+    Based on this data and the user profile, provide:
+    1. A boolean value 'isHealthy' for this specific user.
+    2. A concise 'healthRecommendation' (2-3 sentences max) explaining why it is or isn't healthy for them.
+       For example: "High sugar content detected. This is not suitable for a diabetic user." or "Excellent source of protein, which is great for a gym-goer's muscle recovery."
+       If the user has allergies, check if any ingredients are allergens and mention it.
+  `;
+  
+  const recommendationSchema = {
+    type: Type.OBJECT,
+    properties: {
+      isHealthy: { type: Type.BOOLEAN },
+      healthRecommendation: { type: Type.STRING }
+    },
+    required: ["isHealthy", "healthRecommendation"]
+  }
+
   try {
-    let profileDescription = "a generic user";
-    if (userProfile.healthCondition !== HealthCondition.NONE) {
-      profileDescription = `a user who is a ${userProfile.healthCondition}`;
-    }
-    if (userProfile.age) {
-      profileDescription += ` and is ${userProfile.age} years old`;
-    }
-    if (userProfile.allergies.length > 0) {
-      profileDescription += ` with allergies to ${userProfile.allergies.join(", ")}.`;
-    }
-
-    const prompt = `
-      Analyze the following nutritional information for ${profileDescription}:
-      - Food: ${nutritionalInfo.foodName}
-      - Calories: ${nutritionalInfo.calories} kcal
-      - Protein: ${nutritionalInfo.protein}g
-      - Sugar: ${nutritionalInfo.sugar}g
-      - Fat: ${nutritionalInfo.fat}g
-      - Fiber: ${nutritionalInfo.fiber}g
-      - Ingredients: ${nutritionalInfo.ingredients.join(", ")}
-
-      Based on this data and the user profile, provide:
-      1. A boolean value 'isHealthy' for this specific user.
-      2. A concise 'healthRecommendation' (2-3 sentences max) explaining why it is or isn't healthy for them.
-         For example: "High sugar content detected. This is not suitable for a diabetic user." or "Excellent source of protein, which is great for a gym-goer's muscle recovery."
-         If the user has allergies, check if any ingredients are allergens and mention it.
-    `;
-    
-    const recommendationSchema = {
-      type: Type.OBJECT,
-      properties: {
-        isHealthy: { type: Type.BOOLEAN },
-        healthRecommendation: { type: Type.STRING }
-      },
-      required: ["isHealthy", "healthRecommendation"]
-    }
-
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,
@@ -135,6 +125,7 @@ export const getHealthRecommendation = async (nutritionalInfo: NutritionalInfo, 
     const jsonText = response.text.trim();
     return JSON.parse(jsonText);
   } catch (error) {
-    handleApiError(error);
+    console.error("Gemini API call failed in getHealthRecommendation:", error);
+    throw error;
   }
 };
