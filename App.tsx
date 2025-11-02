@@ -3,6 +3,7 @@ import { HomeScreen } from './components/HomeScreen';
 import { Scanner } from './components/Scanner';
 import { ResultsDisplay } from './components/ResultsDisplay';
 import { ProfileModal } from './components/ProfileModal';
+import { ApiKeyScreen } from './components/ApiKeyScreen';
 import { View, ScanMode, UserProfile, HealthCondition, AnalysisResult, NutritionalInfo } from './types';
 import { analyzeFoodFromImage, analyzeFoodFromQR, getHealthRecommendation } from './services/geminiService';
 
@@ -15,6 +16,7 @@ const fileToBase64 = (file: File): Promise<string> =>
   });
 
 export default function App() {
+  const [apiKey, setApiKey] = useState<string | null>(() => sessionStorage.getItem('gemini-api-key'));
   const [view, setView] = useState<View>(View.HOME);
   const [scanMode, setScanMode] = useState<ScanMode>(ScanMode.IMAGE);
   const [userProfile, setUserProfile] = useState<UserProfile>({
@@ -28,48 +30,66 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
+  const handleSaveApiKey = (key: string) => {
+    sessionStorage.setItem('gemini-api-key', key);
+    setApiKey(key);
+  };
+
+  const handleInvalidApiKey = () => {
+    sessionStorage.removeItem('gemini-api-key');
+    setApiKey(null);
+    setError("Your API Key is invalid. Please enter a valid key.");
+  };
+
   const handleAnalysis = useCallback(async (getNutritionalInfo: () => Promise<NutritionalInfo>) => {
+    if (!apiKey) {
+        setError("API Key is not set.");
+        return;
+    }
     setIsLoading(true);
     setError(null);
     try {
       const nutritionalInfo = await getNutritionalInfo();
-      const recommendation = await getHealthRecommendation(nutritionalInfo, userProfile);
+      const recommendation = await getHealthRecommendation(apiKey, nutritionalInfo, userProfile);
       setAnalysisResult({ ...recommendation, nutritionalInfo });
       setView(View.RESULTS);
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred.';
-      setError(errorMessage);
-      setView(View.HOME);
+      if (errorMessage.toLowerCase().includes('api key')) {
+        handleInvalidApiKey();
+      } else {
+        setError(errorMessage);
+        setView(View.HOME);
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [userProfile]);
+  }, [userProfile, apiKey]);
   
   const handleImageCapture = useCallback((imageSrc: string) => {
     setScannedImage(imageSrc);
     const base64Image = imageSrc.split(',')[1];
-    handleAnalysis(() => analyzeFoodFromImage(base64Image, 'image/jpeg'));
-  }, [handleAnalysis]);
+    handleAnalysis(() => analyzeFoodFromImage(apiKey!, base64Image, 'image/jpeg'));
+  }, [handleAnalysis, apiKey]);
   
   const handleImageUpload = useCallback(async (file: File) => {
     try {
         const base64Image = await fileToBase64(file);
         const imageSrc = URL.createObjectURL(file);
         setScannedImage(imageSrc);
-        await handleAnalysis(() => analyzeFoodFromImage(base64Image, file.type));
+        await handleAnalysis(() => analyzeFoodFromImage(apiKey!, base64Image, file.type));
     } catch (e) {
         console.error("Error processing file upload:", e);
-        const errorMessage = e instanceof Error ? e.message : 'There was an error reading the file.';
-        setError(errorMessage);
+        setError("There was an error reading the file. Please try a different image.");
         setIsLoading(false); 
         setView(View.HOME);
     }
-  }, [handleAnalysis]);
+  }, [handleAnalysis, apiKey]);
 
   const handleQrCodeScan = useCallback((data: string) => {
     setScannedImage(null);
-    handleAnalysis(() => analyzeFoodFromQR(data));
-  }, [handleAnalysis]);
+    handleAnalysis(() => analyzeFoodFromQR(apiKey!, data));
+  }, [handleAnalysis, apiKey]);
 
   const handleModeSelect = (mode: ScanMode) => {
     setScanMode(mode);
@@ -110,6 +130,10 @@ export default function App() {
         return <HomeScreen onModeSelect={handleModeSelect} onImageUpload={handleImageUpload} />;
     }
   };
+
+  if (!apiKey) {
+    return <ApiKeyScreen onSave={handleSaveApiKey} error={error} clearError={() => setError(null)} />;
+  }
 
   return (
     <div className="h-screen w-screen font-sans bg-gray-50 dark:bg-gray-900 antialiased overflow-y-auto">
