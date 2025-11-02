@@ -19,16 +19,8 @@ const nutritionalInfoSchema = {
   required: ["foodName", "calories", "protein", "sugar", "fat", "fiber", "ingredients"]
 };
 
-const handleApiError = (error: unknown): never => {
-  console.error("Error communicating with Gemini API:", error);
-  if (error instanceof Error && (error.message.includes('400') || error.message.includes('invalid') || error.message.includes('API key'))) {
-      throw new Error("The provided API key is invalid or expired. Please check the key and try again.");
-  }
-  throw new Error("Failed to get a response from the AI model. The service may be temporarily unavailable.");
-};
-
-export const analyzeFoodFromImage = async (apiKey: string, base64Image: string, mimeType: string): Promise<NutritionalInfo> => {
-  const ai = new GoogleGenAI({ apiKey });
+export const analyzeFoodFromImage = async (base64Image: string, mimeType: string): Promise<NutritionalInfo> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const imagePart = {
     inlineData: {
       data: base64Image,
@@ -54,12 +46,13 @@ export const analyzeFoodFromImage = async (apiKey: string, base64Image: string, 
     const nutritionalInfo: NutritionalInfo = JSON.parse(jsonText);
     return nutritionalInfo;
   } catch (error) {
-    handleApiError(error);
+    console.error("Gemini API call failed in analyzeFoodFromImage:", error);
+    throw error;
   }
 };
 
-export const analyzeFoodFromQR = async (apiKey: string, qrData: string): Promise<NutritionalInfo> => {
-  const ai = new GoogleGenAI({ apiKey });
+export const analyzeFoodFromQR = async (qrData: string): Promise<NutritionalInfo> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const prompt = `A QR code was scanned for a food product, and it contained this data: "${qrData}". Assume this corresponds to a popular packaged food item. Generate a plausible nutritional label for it. If the data looks like a URL, interpret what kind of product it might be. If it's just an ID, invent a common product (e.g., a granola bar, a soda, or a bag of chips).`;
 
   try {
@@ -75,12 +68,13 @@ export const analyzeFoodFromQR = async (apiKey: string, qrData: string): Promise
     const nutritionalInfo: NutritionalInfo = JSON.parse(jsonText);
     return nutritionalInfo;
   } catch (error) {
-    handleApiError(error);
+    console.error("Gemini API call failed in analyzeFoodFromQR:", error);
+    throw error;
   }
 };
 
-export const getHealthRecommendation = async (apiKey: string, nutritionalInfo: NutritionalInfo, userProfile: UserProfile): Promise<Omit<AnalysisResult, 'nutritionalInfo'>> => {
-  const ai = new GoogleGenAI({ apiKey });
+export const getHealthRecommendation = async (nutritionalInfo: NutritionalInfo, userProfile: UserProfile): Promise<Omit<AnalysisResult, 'nutritionalInfo'>> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   let profileDescription = "a generic user";
   if (userProfile.healthCondition !== HealthCondition.NONE) {
     profileDescription = `a user who is a ${userProfile.healthCondition}`;
@@ -131,6 +125,7 @@ export const getHealthRecommendation = async (apiKey: string, nutritionalInfo: N
     const jsonText = response.text.trim();
     return JSON.parse(jsonText);
   } catch (error) {
-    handleApiError(error);
+    console.error("Gemini API call failed in getHealthRecommendation:", error);
+    throw error;
   }
 };
