@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { HomeScreen } from './components/HomeScreen';
 import { Scanner } from './components/Scanner';
 import { ResultsDisplay } from './components/ResultsDisplay';
@@ -28,7 +28,34 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [hasApiKey, setHasApiKey] = useState(false);
 
+  useEffect(() => {
+    const checkApiKey = async () => {
+      try {
+        // Fix: Use type assertion to 'any' to avoid global type conflicts for window.aistudio.
+        const keyStatus = await (window as any).aistudio.hasSelectedApiKey();
+        setHasApiKey(keyStatus);
+      } catch (e) {
+        console.error("aistudio tools not available.", e);
+        setHasApiKey(false);
+      }
+    };
+    checkApiKey();
+  }, []);
+
+  const handleSelectKey = async () => {
+    try {
+      // Fix: Use type assertion to 'any' to avoid global type conflicts for window.aistudio.
+      await (window as any).aistudio.openSelectKey();
+      // Assume success after dialog opens to avoid race conditions.
+      setHasApiKey(true);
+    } catch (e) {
+       console.error("Could not open API key selection dialog.", e);
+       setError("Could not open the API key selection dialog. Please refresh the page and try again.");
+    }
+  };
+  
   const handleAnalysis = useCallback(async (getNutritionalInfo: () => Promise<NutritionalInfo>) => {
     setIsLoading(true);
     setError(null);
@@ -38,8 +65,14 @@ export default function App() {
       setAnalysisResult({ ...recommendation, nutritionalInfo });
       setView(View.RESULTS);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'An unknown error occurred.');
-      setView(View.HOME); // Go back home on error
+      const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred.';
+      if (errorMessage.includes("Requested entity was not found")) {
+        setError("Your API key appears to be invalid or revoked. Please select a new one.");
+        setHasApiKey(false); // Force user back to key selection screen
+      } else {
+        setError(errorMessage);
+        setView(View.HOME); // Go back home on other errors
+      }
     } finally {
       setIsLoading(false);
     }
@@ -102,6 +135,32 @@ export default function App() {
         return <HomeScreen onModeSelect={handleModeSelect} onImageUpload={handleImageUpload} />;
     }
   };
+
+  if (!hasApiKey) {
+    return (
+        <div className="flex flex-col items-center justify-center h-screen bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 p-4">
+            <div className="text-center max-w-lg">
+                <h1 className="text-3xl font-bold text-green-600 dark:text-green-400">Welcome to NutriScan AI</h1>
+                <p className="mt-4 text-lg text-gray-600 dark:text-gray-300">To power the AI food analysis, this app requires a Google AI Studio API key.</p>
+                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                    Your key is used directly in your browser and is never sent to our servers. For information on pricing and setup, please see the 
+                    <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="text-green-500 underline hover:text-green-600"> official documentation</a>.
+                </p>
+                <button 
+                    onClick={handleSelectKey}
+                    className="mt-8 px-6 py-3 bg-green-600 text-white font-bold rounded-full hover:bg-green-700 transition-colors shadow-lg"
+                >
+                    Select API Key
+                </button>
+                 {error && (
+                  <div className="mt-4 text-red-500" role="alert">
+                    <p>{error}</p>
+                  </div>
+                )}
+            </div>
+        </div>
+    );
+  }
 
   return (
     <div className="h-screen w-screen font-sans bg-gray-50 dark:bg-gray-900 antialiased overflow-y-auto">
