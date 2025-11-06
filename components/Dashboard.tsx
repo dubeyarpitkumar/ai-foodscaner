@@ -89,7 +89,15 @@ export const Dashboard: React.FC = () => {
       setOriginalResult(result);
       setView(View.RESULTS);
     } catch (e) {
-      const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred.';
+      let errorMessage = 'An unknown error occurred during analysis. Please try again.';
+      if (e instanceof Error) {
+        // Check for common invalid API key or permission error messages from the Gemini API.
+        if (e.message.includes('API key not valid') || e.message.includes('permission')) {
+            errorMessage = "The configured API Key is invalid or lacks permissions. Please check your environment configuration.";
+        } else {
+            errorMessage = e.message;
+        }
+      }
       setError(errorMessage);
       setView(View.HOME);
       setIsLoading(false); // Ensure loading is stopped on error
