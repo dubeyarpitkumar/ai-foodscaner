@@ -83,7 +83,13 @@ export const Scanner: React.FC<ScannerProps> = ({ mode, onImageCapture, onQrCode
         screenshotFormat="image/jpeg"
         className="w-full h-full object-cover"
         videoConstraints={{ facingMode: "environment" }}
+        onUserMedia={() => {}}
         onUserMediaError={(err) => setError(t.errorCameraAccess)}
+        mirrored={false}
+        disablePictureInPicture={false}
+        forceScreenshotSourceSize={false}
+        imageSmoothing={true}
+        screenshotQuality={0.92}
       />
       
       {mode === ScanMode.QR && (
