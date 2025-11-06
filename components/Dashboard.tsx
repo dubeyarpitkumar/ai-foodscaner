@@ -1,17 +1,14 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import type { User } from 'firebase/auth';
 import { HomeScreen } from './HomeScreen';
 import { Scanner } from './Scanner';
 import { ResultsDisplay } from './ResultsDisplay';
 import { ProfileModal } from './ProfileModal';
-import { View, ScanMode, UserProfile, AnalysisResult, NutritionalInfo } from '../types';
+import { View, ScanMode, UserProfile, AnalysisResult, NutritionalInfo, Gender, DietType, HealthCondition } from '../types';
 import { analyzeFoodFromImage, analyzeFoodFromQR, getHealthRecommendation, translateAnalysisResult } from '../services/geminiService';
-import { updateUserProfileDocument } from '../services/firebaseService';
 import { useTranslations } from '../contexts/LanguageContext';
 import { SunIcon } from './icons/SunIcon';
 import { MoonIcon } from './icons/MoonIcon';
 import { LanguageIcon } from './icons/LanguageIcon';
-import { LogoutIcon } from './icons/LogoutIcon';
 
 const fileToBase64 = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -21,16 +18,36 @@ const fileToBase64 = (file: File): Promise<string> =>
     reader.onerror = (error) => reject(error);
   });
   
-interface DashboardProps {
-  user: User;
-  initialProfile: UserProfile;
-  onSignOut: () => void;
-}
+const defaultProfile: UserProfile = {
+    uid: 'local-user',
+    email: 'guest@nutriscan.ai',
+    displayName: 'Guest User',
+    age: 30, // Default age
+    gender: Gender.PREFER_NOT_TO_SAY,
+    dietType: DietType.NONE,
+    healthCondition: HealthCondition.NONE,
+    allergies: [],
+};
 
-export const Dashboard: React.FC<DashboardProps> = ({ user, initialProfile, onSignOut }) => {
+const getInitialProfile = (): UserProfile => {
+    try {
+        const savedProfile = localStorage.getItem('userProfile');
+        if (savedProfile) {
+            return JSON.parse(savedProfile);
+        }
+    } catch (error) {
+        console.error("Failed to parse user profile from localStorage", error);
+    }
+    // If nothing in localStorage, save and return the default profile
+    localStorage.setItem('userProfile', JSON.stringify(defaultProfile));
+    return defaultProfile;
+};
+
+
+export const Dashboard: React.FC = () => {
   const [view, setView] = useState<View>(View.HOME);
   const [scanMode, setScanMode] = useState<ScanMode>(ScanMode.IMAGE);
-  const [userProfile, setUserProfile] = useState<UserProfile>(initialProfile);
+  const [userProfile, setUserProfile] = useState<UserProfile>(getInitialProfile);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [originalResult, setOriginalResult] = useState<AnalysisResult | null>(null);
   const [scannedImage, setScannedImage] = useState<string | null>(null);
@@ -58,7 +75,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, initialProfile, onSi
   }, [isDarkMode]);
 
   const handleProfileSave = async (updatedProfile: UserProfile) => {
-    await updateUserProfileDocument(user.uid, updatedProfile);
+    localStorage.setItem('userProfile', JSON.stringify(updatedProfile));
     setUserProfile(updatedProfile);
   };
 
@@ -191,9 +208,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, initialProfile, onSi
             </button>
             <button onClick={() => setIsProfileModalOpen(true)} className="px-4 py-2 text-sm font-semibold bg-green-500 text-white rounded-full hover:bg-green-600 transition-colors shadow">
                 {t.myProfile}
-            </button>
-            <button onClick={onSignOut} title={t.signOut} className="p-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-full hover:bg-red-500 dark:hover:bg-red-600 hover:text-white dark:hover:text-white transition-colors">
-                <LogoutIcon className="h-5 w-5"/>
             </button>
         </div>
       </header>
