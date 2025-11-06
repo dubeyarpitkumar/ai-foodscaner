@@ -1,7 +1,6 @@
-
 import React, { useRef, useCallback, useEffect, useState } from 'react';
 import Webcam from 'react-webcam';
-import jsQR from 'jsqr';
+import { BrowserMultiFormatReader, NotFoundException } from '@zxing/library';
 import { ScanMode } from '../types';
 import { CameraIcon } from './icons/CameraIcon';
 import { useTranslations } from '../contexts/LanguageContext';
@@ -15,7 +14,6 @@ interface ScannerProps {
 
 export const Scanner: React.FC<ScannerProps> = ({ mode, onImageCapture, onQrCodeScan, onBack }) => {
   const webcamRef = useRef<Webcam>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [error, setError] = useState<string | null>(null);
   const { t } = useTranslations();
 
@@ -28,40 +26,54 @@ export const Scanner: React.FC<ScannerProps> = ({ mode, onImageCapture, onQrCode
     }
   }, [webcamRef, onImageCapture, t]);
 
-  const scanQrCode = useCallback(() => {
-    if (
-      webcamRef.current &&
-      webcamRef.current.video &&
-      webcamRef.current.video.readyState === 4 &&
-      canvasRef.current
-    ) {
-      const video = webcamRef.current.video;
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        canvas.height = video.videoHeight;
-        canvas.width = video.videoWidth;
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const code = jsQR(imageData.data, imageData.width, imageData.height);
-        if (code) {
-          onQrCodeScan(code.data);
-        }
-      }
-    }
-  }, [onQrCodeScan]);
-
   useEffect(() => {
-    let interval: number | undefined;
-    if (mode === ScanMode.QR) {
-      interval = window.setInterval(scanQrCode, 200);
+    if (mode !== ScanMode.QR) {
+      return;
     }
-    return () => {
-      if (interval) {
-        clearInterval(interval);
+
+    const reader = new BrowserMultiFormatReader();
+    
+    const startScan = async () => {
+      if (webcamRef.current && webcamRef.current.video) {
+        const video = webcamRef.current.video;
+        // Wait until video is ready. readyState 4 means it has enough data to play.
+        if (video.readyState === 4) {
+          try {
+            // decodeContinuously will keep scanning until a code is found or it's stopped.
+            await reader.decodeContinuously(video, (result, err) => {
+              if (result) {
+                // Once a result is found, stop scanning and call the parent callback.
+                // The component will unmount, triggering the cleanup function.
+                reader.reset();
+                onQrCodeScan(result.getText());
+              }
+              // NotFoundException is thrown when no code is found in a frame. This is normal.
+              // We only want to log other, unexpected errors.
+              if (err && !(err instanceof NotFoundException)) {
+                console.error('Barcode scan error:', err);
+              }
+            });
+          } catch (e) {
+            console.error('Error starting scanner:', e);
+            setError(t.errorCameraAccess);
+          }
+        } else {
+          // If video not ready, wait a bit and try again.
+          setTimeout(startScan, 200);
+        }
+      } else {
+         // If webcamRef not ready, wait a bit and try again.
+         setTimeout(startScan, 200);
       }
     };
-  }, [mode, scanQrCode]);
+    
+    startScan();
+
+    return () => {
+      // This is the cleanup function. It's crucial to release the camera.
+      reader.reset();
+    };
+  }, [mode, onQrCodeScan, t.errorCameraAccess]);
 
   return (
     <div className="relative w-full h-full bg-black flex flex-col justify-center items-center">
@@ -73,8 +85,7 @@ export const Scanner: React.FC<ScannerProps> = ({ mode, onImageCapture, onQrCode
         videoConstraints={{ facingMode: "environment" }}
         onUserMediaError={(err) => setError(t.errorCameraAccess)}
       />
-      <canvas ref={canvasRef} className="hidden" />
-
+      
       {mode === ScanMode.QR && (
         <div className="absolute inset-0 flex items-center justify-center p-8">
             <div className="w-full max-w-sm aspect-square border-4 border-dashed border-green-400 rounded-2xl bg-black bg-opacity-20 animate-pulse"></div>

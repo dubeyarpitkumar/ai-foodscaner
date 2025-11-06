@@ -1,25 +1,30 @@
 import React, { useState } from 'react';
+import type { User } from 'firebase/auth';
 import { UserProfile, HealthCondition, Gender, DietType } from '../types';
 import { useTranslations } from '../contexts/LanguageContext';
+import { updateUserProfileDocument } from '../services/firebaseService';
 
-interface ProfileModalProps {
-  userProfile: UserProfile;
-  onSave: (profile: UserProfile) => Promise<void>;
-  onClose: () => void;
+interface ProfileFormProps {
+  user: User;
+  onProfileSaved: (profile: UserProfile) => void;
+  initialProfile: UserProfile | null;
 }
 
-export const ProfileModal: React.FC<ProfileModalProps> = ({ userProfile, onSave, onClose }) => {
-  const [displayName, setDisplayName] = useState<string>(userProfile.displayName || '');
-  const [age, setAge] = useState<string>(userProfile.age?.toString() || '');
-  const [gender, setGender] = useState<Gender>(userProfile.gender);
-  const [dietType, setDietType] = useState<DietType>(userProfile.dietType);
-  const [healthCondition, setHealthCondition] = useState<HealthCondition>(userProfile.healthCondition);
-  const [allergies, setAllergies] = useState<string>(userProfile.allergies.join(', '));
+export const ProfileForm: React.FC<ProfileFormProps> = ({ user, onProfileSaved, initialProfile }) => {
+  const [displayName, setDisplayName] = useState(initialProfile?.displayName || user.displayName || '');
+  const [age, setAge] = useState(initialProfile?.age?.toString() || '');
+  const [gender, setGender] = useState<Gender>(initialProfile?.gender || Gender.PREFER_NOT_TO_SAY);
+  const [dietType, setDietType] = useState<DietType>(initialProfile?.dietType || DietType.NONE);
+  const [healthCondition, setHealthCondition] = useState<HealthCondition>(initialProfile?.healthCondition || HealthCondition.NONE);
+  const [allergies, setAllergies] = useState(initialProfile?.allergies?.join(', ') || '');
+  const [isLoading, setIsLoading] = useState(false);
   const { t } = useTranslations();
 
-  const handleSave = async () => {
-    const updatedProfile: UserProfile = {
-      ...userProfile,
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    const profileData: Partial<UserProfile> = {
       displayName,
       age: age ? parseInt(age, 10) : null,
       gender,
@@ -27,17 +32,30 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ userProfile, onSave,
       healthCondition,
       allergies: allergies.split(',').map(a => a.trim()).filter(a => a),
     };
-    await onSave(updatedProfile);
-    onClose();
+
+    try {
+      await updateUserProfileDocument(user.uid, profileData);
+      const fullProfile: UserProfile = {
+        uid: user.uid,
+        email: user.email!,
+        ...profileData
+      } as UserProfile; // We cast here because we know we've provided all required fields
+      onProfileSaved(fullProfile);
+    } catch (error) {
+      console.error("Failed to save profile:", error);
+      setIsLoading(false);
+      // You might want to show an error message to the user here
+    }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6 md:p-8 overflow-y-auto max-h-full">
-        <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-200 text-center">{t.yourHealthProfile}</h2>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+      <div className="w-full max-w-lg p-8 bg-white dark:bg-gray-800 rounded-2xl shadow-xl">
+        <h2 className="text-3xl font-bold text-center text-gray-800 dark:text-gray-200">{t.createYourProfile}</h2>
+        <p className="mt-2 text-center text-sm text-gray-500 dark:text-gray-400">{t.completeProfile}</p>
         
-        <div className="space-y-4">
-          <div>
+        <form onSubmit={handleSave} className="mt-8 space-y-4">
+           <div>
             <label htmlFor="displayName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t.displayName}</label>
             <input
               type="text"
@@ -46,6 +64,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ userProfile, onSave,
               onChange={(e) => setDisplayName(e.target.value)}
               className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm text-gray-900 dark:text-gray-100"
               placeholder={t.displayNamePlaceholder}
+              required
             />
           </div>
           <div>
@@ -72,7 +91,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ userProfile, onSave,
               ))}
             </select>
           </div>
-          <div>
+           <div>
             <label htmlFor="dietType" className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t.dietType}</label>
             <select
               id="dietType"
@@ -109,22 +128,16 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ userProfile, onSave,
               placeholder={t.allergiesPlaceholder}
             />
           </div>
-        </div>
-
-        <div className="mt-8 flex justify-between gap-4">
-          <button
-            onClick={onClose}
-            className="w-full px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
-          >
-            {t.cancel}
-          </button>
-          <button
-            onClick={handleSave}
-            className="w-full px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors shadow"
-          >
-            {t.saveProfile}
-          </button>
-        </div>
+          <div className="pt-4">
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:bg-gray-400 dark:disabled:bg-gray-600"
+            >
+              {isLoading ? 'Saving...' : t.saveAndContinue}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

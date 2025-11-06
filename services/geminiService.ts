@@ -1,10 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { UserProfile, NutritionalInfo, AnalysisResult, HealthCondition } from "../types";
 
-// NOTE: Hardcoded API key as per user request to make it "inbuilt"
-// and to resolve environment issues where process.env.API_KEY was not available.
-const API_KEY = "AIzaSyBs37d1YHkEQHJQljFgp1-2U5reNHsgnnk";
-
 const nutritionalInfoSchema = {
   type: Type.OBJECT,
   properties: {
@@ -24,7 +20,7 @@ const nutritionalInfoSchema = {
 };
 
 export const analyzeFoodFromImage = async (base64Image: string, mimeType: string): Promise<NutritionalInfo> => {
-  const ai = new GoogleGenAI({ apiKey: API_KEY });
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const imagePart = {
     inlineData: {
       data: base64Image,
@@ -38,6 +34,7 @@ export const analyzeFoodFromImage = async (base64Image: string, mimeType: string
 
   try {
     const response = await ai.models.generateContent({
+      // FIX: Use a model that supports image and text input. `gemini-2.5-flash` is a good choice for this multimodal task.
       model: 'gemini-2.5-flash',
       contents: { parts: [imagePart, textPart] },
       config: {
@@ -56,8 +53,8 @@ export const analyzeFoodFromImage = async (base64Image: string, mimeType: string
 };
 
 export const analyzeFoodFromQR = async (qrData: string): Promise<NutritionalInfo> => {
-  const ai = new GoogleGenAI({ apiKey: API_KEY });
-  const prompt = `A QR code was scanned for a food product, and it contained this data: "${qrData}". Assume this corresponds to a popular packaged food item. Generate a plausible nutritional label for it. If the data looks like a URL, interpret what kind of product it might be. If it's just an ID, invent a common product (e.g., a granola bar, a soda, or a bag of chips).`;
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const prompt = `A barcode or QR code was scanned for a food product, and it contained this data: "${qrData}". Assume this corresponds to a popular packaged food item. Generate a plausible nutritional label for it. If the data looks like a URL, interpret what kind of product it might be. If it's just an ID, invent a common product (e.g., a granola bar, a soda, or a bag of chips).`;
 
   try {
     const response = await ai.models.generateContent({
@@ -78,7 +75,7 @@ export const analyzeFoodFromQR = async (qrData: string): Promise<NutritionalInfo
 };
 
 export const getHealthRecommendation = async (nutritionalInfo: NutritionalInfo, userProfile: UserProfile): Promise<Omit<AnalysisResult, 'nutritionalInfo'>> => {
-  const ai = new GoogleGenAI({ apiKey: API_KEY });
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   let profileDescription = "a generic user";
   if (userProfile.healthCondition !== HealthCondition.NONE) {
     profileDescription = `a user who is a ${userProfile.healthCondition}`;
@@ -131,5 +128,71 @@ export const getHealthRecommendation = async (nutritionalInfo: NutritionalInfo, 
   } catch (error) {
     console.error("Gemini API call failed in getHealthRecommendation:", error);
     throw error;
+  }
+};
+
+export const translateAnalysisResult = async (
+  result: AnalysisResult,
+  targetLanguage: 'Hindi'
+): Promise<AnalysisResult> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+  const translatableContent = {
+    foodName: result.nutritionalInfo.foodName,
+    healthRecommendation: result.healthRecommendation,
+    ingredients: result.nutritionalInfo.ingredients,
+  };
+
+  const prompt = `Translate the string values in the following JSON object to conversational and simple Hindi, as if you were explaining it to a friend. Avoid formal or bookish words. For example, instead of "प्रदान करता है", use "देता है". Instead of a literal translation for recommendations like "should be controlled", use a natural phrase like "कम मात्रा में खाना बेहतर है".
+
+- Do not translate the JSON keys.
+- Keep the original JSON structure.
+- Translate each string element in the 'ingredients' array.
+- Do not translate food names (like "Pizza", "Burger") or numerical values.
+
+Input:
+${JSON.stringify(translatableContent, null, 2)}
+
+Output:`;
+
+  const translationSchema = {
+    type: Type.OBJECT,
+    properties: {
+      foodName: { type: Type.STRING },
+      healthRecommendation: { type: Type.STRING },
+      ingredients: {
+        type: Type.ARRAY,
+        items: { type: Type.STRING }
+      },
+    },
+    required: ["foodName", "healthRecommendation", "ingredients"]
+  };
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: translationSchema,
+      },
+    });
+
+    const jsonText = response.text.trim();
+    const translatedContent = JSON.parse(jsonText);
+
+    return {
+      ...result,
+      nutritionalInfo: {
+        ...result.nutritionalInfo,
+        foodName: translatedContent.foodName,
+        ingredients: translatedContent.ingredients,
+      },
+      healthRecommendation: translatedContent.healthRecommendation,
+    };
+  } catch (error) {
+    console.error("Gemini API call failed in translateAnalysisResult:", error);
+    // If translation fails, return the original result to avoid breaking the UI.
+    return result; 
   }
 };

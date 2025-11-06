@@ -6,8 +6,28 @@ export enum HealthCondition {
   HEART_PATIENT = "Heart Patient",
 }
 
+export enum Gender {
+  MALE = "Male",
+  FEMALE = "Female",
+  OTHER = "Other",
+  PREFER_NOT_TO_SAY = "Prefer not to say",
+}
+
+export enum DietType {
+  NONE = "None",
+  VEGETARIAN = "Vegetarian",
+  VEGAN = "Vegan",
+  PESCATARIAN = "Pescatarian",
+  KETO = "Keto",
+}
+
 export interface UserProfile {
+  uid: string;
+  email: string;
+  displayName: string;
   age: number | null;
+  gender: Gender;
+  dietType: DietType;
   healthCondition: HealthCondition;
   allergies: string[];
 }
