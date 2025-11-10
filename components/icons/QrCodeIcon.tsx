@@ -1,15 +1,24 @@
-
 import React from 'react';
 
-export const QrCodeIcon = ({ className }: { className?: string }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    className={className || "h-6 w-6"}
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-    strokeWidth={2}
-  >
-     <path strokeLinecap="round" strokeLinejoin="round" d="M4 4h1v1H4V4zm2 0h1v1H6V4zm2 0h1v1H8V4zm4 0h1v1h-1V4zm2 0h1v1h-1V4zm2 0h1v1h-1V4zM4 6h1v1H4V6zm14 0h1v1h-1V6zM4 8h1v1H4V8zm14 0h1v1h-1V8zM4 12h1v1H4v-1zm2 0h1v1H6v-1zm2 0h1v1H8v-1zm6 0h1v1h-1v-1zm2 0h1v1h-1v-1zm2 0h1v1h-1v-1zM4 14h1v1H4v-1zm14 0h1v1h-1v-1zM4 16h1v1H4v-1zm2 0h1v1H6v-1zm2 0h1v1H8v-1zm10 0h1v1h-1v-1zM4 18h1v1H4v-1zm2 0h1v1H6v-1zm2 0h1v1H8v-1zm10 0h1v1h-1v-1zM6 6h3v3H6V6zm8 0h3v3h-3V6zM6 14h3v3H6v-3zm8 0h3v3h-3v-3z" />
-  </svg>
-);
+interface IconProps {
+  className?: string;
+}
+
+export const QrCodeIcon: React.FC<IconProps> = ({ className = "h-6 w-6" }) => {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
+      />
+    </svg>
+  );
+};

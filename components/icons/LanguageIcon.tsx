@@ -1,15 +1,24 @@
-
 import React from 'react';
 
-export const LanguageIcon = ({ className }: { className?: string }) => (
-    <svg 
-        xmlns="http://www.w3.org/2000/svg" 
-        className={className || "h-6 w-6"} 
-        fill="none" 
-        viewBox="0 0 24 24" 
-        stroke="currentColor" 
-        strokeWidth={2}
+interface IconProps {
+  className?: string;
+}
+
+export const LanguageIcon: React.FC<IconProps> = ({ className = "h-6 w-6" }) => {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
     >
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h12M9 3v2m4 13-4-4-4 4M1 12a9 9 0 0118 0 9 9 0 01-18 0zm16-2a2 2 0 100-4 2 2 0 000 4z" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"
+      />
     </svg>
-);
+  );
+};
